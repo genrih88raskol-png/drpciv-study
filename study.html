@@ -12,10 +12,8 @@
   body { font-family: -apple-system, sans-serif; max-width: 780px; margin: 0 auto; padding: 16px; line-height: 1.5; color: #1a1a1a; background: #fafafa; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   .muted { color: #666; font-size: 13px; }
-  #tabs { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  #tabs::-webkit-scrollbar { display: none; }
-  #tabs button { flex: 0 0 auto; padding: 12px 14px; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; }
-  #tabs button.active { background: #1b5e20; color: #fff; border-color: #1b5e20; }
+  #tabSelect { display: block; width: 100%; margin: 14px 0; padding: 12px 10px; border-radius: 8px; border: 1px solid #888; background: #fff; font-size: 16px; font-weight: 600; }
+  #loading { font-weight: 600; }
   select, input[type=text] { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
   #controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; align-items: center; }
   #controls input[type=text] { flex: 1; min-width: 160px; }
@@ -67,14 +65,15 @@
   <button data-lang="ro" onclick="setLang('ro')">RO · Română</button>
 </div>
 
-<div id="tabs">
-  <button id="tabStudy" class="active" onclick="switchTab('study')">📖 Study (read & filter)</button>
-  <button id="tabQuiz" onclick="switchTab('quiz')">📝 Quiz (shuffled options)</button>
-  <button id="tabUnresolved" onclick="switchTab('unresolved')">⚠️ Unresolved (<span id="unresolvedCount"></span>)</button>
-  <button id="tabFull" onclick="switchTab('full')">🔁 Full run (<span id="fullCount"></span>)</button>
-  <button id="tabDrill" onclick="switchTab('drill')">🎯 Learn by pattern</button>
-  <button id="tabNumbers" onclick="switchTab('numbers')">🔢 Numbers (<span id="numCount"></span>)</button>
-</div>
+<select id="tabSelect" onchange="switchTab(this.value)">
+  <option value="study">📖 Study (read & filter)</option>
+  <option value="quiz">📝 Quiz (shuffled options)</option>
+  <option id="tabUnresolved" value="unresolved">⚠️ Unresolved</option>
+  <option id="tabFull" value="full">🔁 Full run</option>
+  <option value="drill">🎯 Learn by pattern</option>
+  <option id="tabNumbers" value="numbers">🔢 Numbers</option>
+</select>
+<p id="loading" class="muted">⏳ Loading question bank…</p>
 
 <!-- STUDY MODE -->
 <div id="studyPane">
@@ -266,7 +265,7 @@ function renderCoverage() {
 }
 renderCoverage();
 
-$("unresolvedCount").textContent = UNRESOLVED.length;
+$("tabUnresolved").textContent = `⚠️ Unresolved (${UNRESOLVED.length})`;
 
 // ---- LEARN BY PATTERN: drill sets grouped by answer shape ----
 const DRILL_SETS = {
@@ -318,12 +317,7 @@ function textForUnresolved(u) {
 }
 
 function switchTab(t) {
-  $("tabStudy").classList.toggle("active", t === "study");
-  $("tabQuiz").classList.toggle("active", t === "quiz");
-  $("tabUnresolved").classList.toggle("active", t === "unresolved");
-  $("tabFull").classList.toggle("active", t === "full");
-  $("tabDrill").classList.toggle("active", t === "drill");
-  $("tabNumbers").classList.toggle("active", t === "numbers");
+  $("tabSelect").value = t;
   $("studyPane").hidden = t !== "study";
   $("quizPane").hidden = t !== "quiz";
   $("unresolvedPane").hidden = t !== "unresolved";
@@ -441,7 +435,7 @@ function classifyNumberQuestion(qq) {
 const NUMBER_ITEMS = QUESTIONS.map((qq, i) => ({ i, cls: classifyNumberQuestion(qq) }))
   .filter((x) => x.cls)
   .sort((a, b) => a.cls.sortVal - b.cls.sortVal);
-$("numCount").textContent = NUMBER_ITEMS.length;
+$("tabNumbers").textContent = `🔢 Numbers (${NUMBER_ITEMS.length})`;
 
 let numbersRendered = false;
 function highlightNumbers(text) { return text.replace(/(\d+(?:[.,]\d+)?)/g, '<b class="num">$1</b>'); }
@@ -593,7 +587,7 @@ function finishQuiz() {
 // ---- FULL RUN: every question, main + unresolved, fresh shuffle every run ----
 let fullDeck, fi, fScore, fScored, fStart, fTimerHandle;
 const FULL_TOTAL = QUESTIONS.length + UNRESOLVED.length;
-$("fullCount").textContent = FULL_TOTAL;
+$("tabFull").textContent = `🔁 Full run (${FULL_TOTAL})`;
 $("fullMenuCount").textContent = FULL_TOTAL;
 
 function shuffledFullItem(src, idx) {
@@ -797,6 +791,7 @@ function finishDrill() {
     `<button class="primary" onclick="location.reload()">Menu</button>`;
 }
 
+$("loading").hidden = true;
 renderStudy();
 </script>
 </body>
