@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b5e20">
+<title>DRPCIV Study — category B</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, sans-serif; max-width: 780px; margin: 0 auto; padding: 16px; line-height: 1.5; color: #1a1a1a; background: #fafafa; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .muted { color: #666; font-size: 13px; }
+  #tabs { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #tabs::-webkit-scrollbar { display: none; }
+  #tabs button { flex: 0 0 auto; padding: 12px 14px; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; }
+  #tabs button.active { background: #1b5e20; color: #fff; border-color: #1b5e20; }
+  select, input[type=text] { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+  #controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; align-items: center; }
+  #controls input[type=text] { flex: 1; min-width: 160px; }
+  .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 10px 0; background: #fff; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #e3edff; color: #1e3a8a; margin-right: 6px; }
+  .tag[hidden] { display: none; }
+  .tag.warn { background: #fff3cd; color: #7a5b00; }
+  .tag.candidate { background: #e0f2fe; color: #075985; }
+  .tag.rejected { background: #fee2e2; color: #991b1b; }
+  .tag.unknown { background: #ede9fe; color: #5b21b6; }
+  .banner { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
+  .banner.candidate { background: #e0f2fe; color: #075985; }
+  .banner.rejected { background: #fee2e2; color: #991b1b; }
+  .banner.unknown { background: #ede9fe; color: #5b21b6; }
+  .ruledout { font-size: 12px; color: #991b1b; margin-top: 6px; }
+  img.qimg { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
+  .opt { display: block; margin: 6px 0; padding: 9px 10px; border: 1px solid #ddd; border-radius: 8px; }
+  .opt.correct { background: #e8f5e9; border-color: #2e7d32; font-weight: 600; }
+  .opt.picked-wrong { background: #ffebee; border-color: #c62828; }
+  .opt input { margin-right: 8px; }
+  .model { font-size: 13px; background: #f5f5f5; border-left: 3px solid #1b5e20; padding: 8px 10px; border-radius: 4px; margin-top: 10px; }
+  .cue { font-size: 12px; color: #7a5b00; margin-top: 6px; }
+  .ro { font-size: 12px; color: #888; font-style: italic; margin-top: 6px; }
+  button.primary { padding: 10px 18px; border-radius: 8px; border: 1px solid #1b5e20; background: #1b5e20; color: #fff; cursor: pointer; font-size: 15px; }
+  button.ghost { padding: 10px 18px; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 15px; }
+  #bar { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
+  #timer.low { color: #c62828; }
+  #mistakes.high { color: #c62828; }
+  .num { background: #fff3cd; color: #7a5b00; padding: 0 3px; border-radius: 3px; font-weight: 700; }
+  #numbersList h3 { font-size: 15px; margin: 22px 0 4px; }
+  #numbersList h3:first-child { margin-top: 8px; }
+  .pass { color: #1b5e20; } .fail { color: #c62828; }
+  #catList { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  #catList span { font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid #ccc; cursor: pointer; user-select: none; }
+  #catList span.on { background: #1b5e20; color: #fff; border-color: #1b5e20; }
+  #langBar { display: flex; gap: 6px; margin: 8px 0; }
+  #langBar button { padding: 6px 14px; border-radius: 999px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 13px; }
+  #langBar button.active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
+</style>
+</head>
+<body>
+<h1>🚗 DRPCIV Study — category B</h1>
+<p class="muted" id="bank"></p>
+<p class="muted" id="progressBar" hidden></p>
+<p class="muted" id="coverageBar" hidden></p>
+<div id="langBar">
+  <button data-lang="en" class="active" onclick="setLang('en')">EN</button>
+  <button data-lang="ru" onclick="setLang('ru')">RU · Русский</button>
+  <button data-lang="ro" onclick="setLang('ro')">RO · Română</button>
+</div>
+
+<div id="tabs">
+  <button id="tabStudy" class="active" onclick="switchTab('study')">📖 Study (read & filter)</button>
+  <button id="tabQuiz" onclick="switchTab('quiz')">📝 Quiz (shuffled options)</button>
+  <button id="tabUnresolved" onclick="switchTab('unresolved')">⚠️ Unresolved (<span id="unresolvedCount"></span>)</button>
+  <button id="tabFull" onclick="switchTab('full')">🔁 Full run (<span id="fullCount"></span>)</button>
+  <button id="tabDrill" onclick="switchTab('drill')">🎯 Learn by pattern</button>
+  <button id="tabNumbers" onclick="switchTab('numbers')">🔢 Numbers (<span id="numCount"></span>)</button>
+</div>
+
+<!-- STUDY MODE -->
+<div id="studyPane">
+  <div id="controls">
+    <input type="text" id="search" placeholder="Search question or answer text…" oninput="renderStudy()">
+    <select id="catFilter" onchange="renderStudy()"></select>
+  </div>
+  <p class="muted" id="studyCount"></p>
+  <div id="studyList"></div>
+  <div style="text-align:center;margin:14px 0"><button class="ghost" onclick="studyPage++;renderStudy()">Load more ▾</button></div>
+</div>
+
+<!-- QUIZ MODE -->
+<div id="quizPane" hidden>
+  <div id="quizMenu">
+    <p class="muted">26 random questions, 30 min timer, shuffled options every attempt — the correct letter
+    is never in the same place twice, so you learn the answer, not its position.
+    <b>Cramming for an exam in a few days? Pick "⚠️ Weak spots" below</b> — retesting the questions you got
+    wrong beats another random run: research on retrieval practice consistently shows targeted re-testing
+    outperforms passive re-reading or unfocused repetition.</p>
+    <select id="quizCat"></select>
+    <button class="primary" onclick="startQuiz()">Start quiz</button>
+  </div>
+  <div id="quizRun" hidden>
+    <div id="bar"><span id="progress"></span><span id="mistakes"></span><span id="timer"></span></div>
+    <div class="card">
+      <span class="tag" id="qcat"></span><span class="tag warn" id="qwarn" hidden>not yet translated</span>
+      <p id="qtext"></p>
+      <div id="opts"></div>
+      <div class="model" id="qmodel" hidden></div>
+    </div>
+    <button class="primary" id="nextBtn" onclick="submitQuiz()">Answer</button>
+  </div>
+  <div id="quizResult" hidden></div>
+</div>
+
+<!-- UNRESOLVED (tracked hard/unanswered pool — NOT site-verified, NOT in the main trainer) -->
+<div id="unresolvedPane" hidden>
+  <p class="muted">These questions are still being verified against the real DGPCI site — worth studying so
+  you recognize them, but treat every answer below as unconfirmed. <b>candidate</b> = current best guess,
+  not yet tested or still being tested. <b>rejected</b> = this exact answer was tried on the real site and
+  scored wrong — shown only so you know what NOT to pick. <b>unknown</b> = no candidate answer at all yet.</p>
+  <div id="unresolvedList"></div>
+</div>
+
+<!-- FULL RUN: every question in the bank, main + unresolved, fresh shuffle every run -->
+<div id="fullPane" hidden>
+  <div id="fullMenu">
+    <p class="muted"><span id="fullMenuCount"></span> questions total — the whole main bank plus the
+    unresolved pool that has no site-confirmed answer yet. Question order and option order reshuffle
+    every run.</p>
+    <button class="primary" onclick="startFull()">Start full run</button>
+  </div>
+  <div id="fullRun" hidden>
+    <div id="fbar" style="display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:8px">
+      <span id="fprogress"></span><span id="ftimer"></span><span id="fscoreLive"></span>
+    </div>
+    <div class="card">
+      <span class="tag" id="fqcat"></span>
+      <span class="tag unknown" id="fqUnconfirmed" hidden>unconfirmed — no verified answer</span>
+      <p id="fqtext"></p>
+      <div id="fopts"></div>
+      <div class="model" id="fqmodel" hidden></div>
+    </div>
+    <button class="primary" id="fnextBtn" onclick="submitFull()">Answer</button>
+  </div>
+  <div id="fullResult" hidden></div>
+</div>
+
+<!-- LEARN BY PATTERN: rote-drill sets grouped by answer shape, instant feedback, no scoring -->
+<div id="drillPane" hidden>
+  <div id="drillMenu">
+    <p class="muted">By answer pattern — <b>Read answers</b> shows every question in the set with the correct
+    answer already revealed, for straight memorization. <b>Test yourself</b> hides the answer until you
+    pick. Fresh shuffle every run. Pick a set:</p>
+    <table style="border-collapse:collapse;width:100%;margin:10px 0">
+      <tbody id="drillSetRows"></tbody>
+    </table>
+  </div>
+  <div id="drillRun" hidden>
+    <div id="dbar" style="display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:8px">
+      <span id="dprogress"></span>
+    </div>
+    <div class="card">
+      <span class="tag" id="dqcat"></span>
+      <p id="dqtext"></p>
+      <div id="dopts"></div>
+      <div class="model" id="dqmodel" hidden></div>
+    </div>
+    <button class="primary" id="dnextBtn" onclick="submitDrill()">Answer</button>
+  </div>
+  <div id="drillResult" hidden></div>
+  <div id="drillReadPane" hidden>
+    <div style="margin-bottom:10px"><button class="ghost" onclick="backToDrillMenu()">← Back</button></div>
+    <div id="drillReadList"></div>
+    <div style="text-align:center;margin:14px 0"><button class="ghost" onclick="readPage++;renderRead()">Load more ▾</button></div>
+  </div>
+</div>
+
+<!-- NUMBERS: every question whose correct answer contains a figure, grouped by kind and sorted low→high -->
+<div id="numbersPane" hidden>
+  <p class="muted">Every rule with a number in its correct answer — stopping/overtaking distances, speed
+  limits, masses, deadlines — grouped by kind and sorted low→high, so the values form one memorable ladder
+  instead of scattered facts. Distances also get a rough size comparison to anchor them.</p>
+  <div id="numbersList"></div>
+</div>
+
+<script src="qchunks/questions.part00.js"></script>
+<script src="qchunks/questions.part01.js"></script>
+<script src="qchunks/questions.part02.js"></script>
+<script src="qchunks/questions.part03.js"></script>
+<script src="qchunks/questions.part04.js"></script>
+<script src="qchunks/questions.part05.js"></script>
+<script src="qchunks/questions.part06.js"></script>
+<script src="qchunks/questions.part07.js"></script>
+<script src="qchunks/questions.part08.js"></script>
+<script src="qchunks/questions.part09.js"></script>
+<script src="qchunks/questions.part10.js"></script>
+<script src="qchunks/questions.part11.js"></script>
+<script src="qchunks/questions.part12.js"></script>
+<script src="qchunks/questions.part13.js"></script>
+<script src="qchunks/questions.part14.js"></script>
+<script src="ids.js"></script>
+<script src="translations_ru.js"></script>
+<script src="topics.js"></script>
+<script src="unresolved.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const CAT_BY_ID = Object.fromEntries(TOPIC_CATS.map(c => [c.id, c]));
+$("bank").textContent = `${QUESTIONS.length} questions, ${TOPIC_CATS.length} topics.`;
+
+// ---- shared: category dropdowns ----
+function fillCatSelect(sel, withAll) {
+  sel.innerHTML = (withAll ? `<option value="">All topics</option>` : "") +
+    TOPIC_CATS.map(c => `<option value="${c.id}">${c.label}</option>`).join("");
+}
+fillCatSelect($("catFilter"), true);
+fillCatSelect($("quizCat"), true);
+
+// ---- WEAK SPOTS (wrong-answer tracking, persisted locally) ----
+const WEAK_KEY = "drpciv_weak_ids";
+let weakIds = new Set(JSON.parse(localStorage.getItem(WEAK_KEY) || "[]"));
+function saveWeak() { localStorage.setItem(WEAK_KEY, JSON.stringify([...weakIds])); }
+const weakOpt = document.createElement("option");
+weakOpt.value = "__weak";
+$("quizCat").insertBefore(weakOpt, $("quizCat").firstChild);
+function refreshWeakOption() { weakOpt.textContent = `⚠️ Weak spots (${weakIds.size})`; weakOpt.disabled = weakIds.size === 0; }
+refreshWeakOption();
+
+// ---- RUN HISTORY (scored-mode results, persisted locally, so progress across days is visible) ----
+const HISTORY_KEY = "drpciv_run_history";
+function logRun(mode, score, total) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  history.push({ date: Date.now(), mode, score, total });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-20)));
+  incRunsTotal();
+  renderProgress();
+  renderCoverage();
+}
+function renderProgress() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  if (!history.length) { $("progressBar").hidden = true; return; }
+  const last = history.slice(-8);
+  $("progressBar").hidden = false;
+  $("progressBar").innerHTML = `📈 Last runs: ` + last.map((h) => {
+    const d = new Date(h.date);
+    return `<span title="${d.toLocaleString()}">${h.score}/${h.total}</span>`;
+  }).join(" → ") + ` &nbsp;<button class="ghost" style="padding:2px 8px;font-size:11px" onclick="clearHistory()">clear</button>`;
+}
+function clearHistory() { localStorage.removeItem(HISTORY_KEY); renderProgress(); }
+renderProgress();
+
+// ---- COVERAGE (uncapped: total runs ever + distinct questions ever shown, persisted locally) ----
+const SEEN_KEY = "drpciv_seen_ids";
+const RUNS_KEY = "drpciv_runs_total";
+let seenIds = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]"));
+function markSeen(qid) {
+  if (!qid || seenIds.has(qid)) return;
+  seenIds.add(qid);
+  localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIds]));
+  renderCoverage();
+}
+function incRunsTotal() { localStorage.setItem(RUNS_KEY, (+localStorage.getItem(RUNS_KEY) || 0) + 1); }
+function renderCoverage() {
+  const runs = +localStorage.getItem(RUNS_KEY) || 0;
+  const total = QUESTIONS.length, seen = seenIds.size;
+  $("coverageBar").hidden = false;
+  $("coverageBar").textContent = `📊 ${runs} run${runs === 1 ? "" : "s"} total · seen ${seen}/${total} questions (${total - seen} never shown yet)`;
+}
+renderCoverage();
+
+$("unresolvedCount").textContent = UNRESOLVED.length;
+
+// ---- LEARN BY PATTERN: drill sets grouped by answer shape ----
+const DRILL_SETS = {
+  c1: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 1),
+  c2: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 2),
+  c3: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 3),
+  priorityImg: QUESTIONS.map((_, i) => i).filter((i) => TOPICS[i].cat === "priority" && QUESTIONS[i].image),
+};
+const DRILL_LABELS = {
+  c1: "1 correct answer",
+  c2: "2 correct answers",
+  c3: "3 correct answers",
+  priorityImg: "🚦 Right-of-way images — who goes first",
+};
+$("drillSetRows").innerHTML = Object.entries(DRILL_SETS).map(([key, set]) =>
+  `<tr><td style="padding:6px 0">${DRILL_LABELS[key]} (${set.length})</td>` +
+  `<td style="padding:6px 0;text-align:right;white-space:nowrap">` +
+  `<button class="ghost" onclick="startRead('${key}')">📖 Read answers</button> ` +
+  `<button class="ghost" onclick="startDrill('${key}')">📝 Test yourself</button>` +
+  `</td></tr>`
+).join("");
+
+// ---- LANGUAGE ----
+let lang = "en";
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll("#langBar button").forEach((b) => b.classList.toggle("active", b.dataset.lang === l));
+  studyRendered = false; unresolvedRendered = false; numbersRendered = false;
+  if (!$("studyPane").hidden) renderStudy();
+  if (!$("unresolvedPane").hidden) renderUnresolved();
+  if (!$("quizPane").hidden && !$("quizRun").hidden) { if (deck && deck[qi]) deck[qi]._picked = picked(); showQuiz(); } // re-render current quiz question in new language, same shuffle, keep picks
+  if (!$("fullPane").hidden && !$("fullRun").hidden) { if (fullDeck && fullDeck[fi]) fullDeck[fi]._picked = pickedFull(); showFull(); }
+  if (!$("drillPane").hidden && !$("drillRun").hidden) showDrill();
+  if (!$("drillPane").hidden && !$("drillReadPane").hidden) renderRead();
+  if (!$("numbersPane").hidden) renderNumbers();
+}
+// Returns {q, a} for QUESTIONS[idx] in the current language. RU/RO always available after the
+// full-bank translation pass; falls back to English only if a lookup is somehow missing.
+function textFor(idx) {
+  const qq = QUESTIONS[idx];
+  if (lang === "ro") return qq.ro ? { q: qq.ro.q, a: qq.ro.a } : { q: qq.q, a: qq.a };
+  if (lang === "ru") { const t = TR_RU[IDS[idx]]; if (t) return t; }
+  return { q: qq.q, a: qq.a };
+}
+function textForUnresolved(u) {
+  if (lang === "ro") return u.ro ? { q: u.ro.q, a: u.ro.a } : { q: u.q, a: u.a };
+  if (lang === "ru") { const t = TR_RU[u.id]; if (t) return t; }
+  return { q: u.q, a: u.a };
+}
+
+function switchTab(t) {
+  $("tabStudy").classList.toggle("active", t === "study");
+  $("tabQuiz").classList.toggle("active", t === "quiz");
+  $("tabUnresolved").classList.toggle("active", t === "unresolved");
+  $("tabFull").classList.toggle("active", t === "full");
+  $("tabDrill").classList.toggle("active", t === "drill");
+  $("tabNumbers").classList.toggle("active", t === "numbers");
+  $("studyPane").hidden = t !== "study";
+  $("quizPane").hidden = t !== "quiz";
+  $("unresolvedPane").hidden = t !== "unresolved";
+  $("fullPane").hidden = t !== "full";
+  $("drillPane").hidden = t !== "drill";
+  $("numbersPane").hidden = t !== "numbers";
+  if (t === "study" && !studyRendered) renderStudy();
+  if (t === "unresolved" && !unresolvedRendered) renderUnresolved();
+  if (t === "numbers" && !numbersRendered) renderNumbers();
+}
+
+// ---- UNRESOLVED PANE ----
+let unresolvedRendered = false;
+const STATUS_LABEL = { candidate: "candidate", rejected: "rejected — do NOT pick this", unknown: "unknown — no candidate yet" };
+function renderUnresolved() {
+  unresolvedRendered = true;
+  $("unresolvedList").innerHTML = UNRESOLVED.map(unresolvedCardHtml).join("");
+}
+function unresolvedCardHtml(u) {
+  const letterSet = new Set(u.letters);
+  const txt = textForUnresolved(u);
+  const bannerText = u.status === "candidate"
+    ? `Best guess so far: ${u.letters.join(", ")}${u.elim ? " (forced by elimination — every other option already ruled out on the real site)" : " — unconfirmed"}`
+    : u.status === "rejected"
+    ? `Tried on the real site and marked WRONG: ${u.letters.join(", ")}`
+    : `No candidate answer yet`;
+  return `<div class="card">` +
+    `<span class="tag ${u.status}">${STATUS_LABEL[u.status]}</span>` +
+    (u.image ? `<img class="qimg" src="${u.image}">` : "") +
+    `<p><b>${txt.q}</b></p>` +
+    txt.a.map((a, k) => `<div class="opt${u.status !== "rejected" && letterSet.has("ABCDE"[k]) ? " correct" : ""}">${"ABCDE"[k]}. ${a}</div>`).join("") +
+    (lang !== "ro" && u.ro ? `<div class="ro">${u.ro.q}</div>` : "") +
+    `<div class="banner ${u.status}">${bannerText}</div>` +
+    (u.ruledOut.length ? `<div class="ruledout">Previously tried &amp; rejected on site: ${u.ruledOut.join(", ")}</div>` : "") +
+    `</div>`;
+}
+
+// ---- STUDY MODE ----
+let studyPage = 1;
+const PAGE_SIZE = 30;
+let studyRendered = false;
+
+function renderStudy() {
+  studyRendered = true;
+  const q = $("search").value.trim().toLowerCase();
+  const cat = $("catFilter").value;
+  const items = QUESTIONS.map((qq, i) => ({ qq, i, t: TOPICS[i] })).filter(({ qq, t }) => {
+    if (cat && t.cat !== cat) return false;
+    if (!q) return true;
+    const hay = (qq.q + " " + qq.a.join(" ") + " " + (qq.ro ? qq.ro.q + " " + qq.ro.a.join(" ") : "")).toLowerCase();
+    return hay.includes(q);
+  });
+  $("studyCount").textContent = `${items.length} matching question(s).`;
+  const slice = items.slice(0, studyPage * PAGE_SIZE);
+  $("studyList").innerHTML = slice.map(({ qq, t, i }) => cardHtml(qq, t, i)).join("");
+}
+$("search").addEventListener("input", () => { studyPage = 1; renderStudy(); });
+$("catFilter").addEventListener("change", () => { studyPage = 1; renderStudy(); });
+
+function cardHtml(qq, t, idx) {
+  const cat = CAT_BY_ID[t.cat];
+  const txt = textFor(idx);
+  return `<div class="card">` +
+    `<span class="tag">${cat.label}</span>` +
+    (qq.image ? `<img class="qimg" src="${qq.image}">` : "") +
+    `<p><b>${txt.q}</b></p>` +
+    txt.a.map((a, k) => `<div class="opt${qq.correct.includes(k) ? " correct" : ""}">${"ABCDE"[k]}. ${a}</div>`).join("") +
+    (lang !== "ro" && qq.ro ? `<div class="ro">${qq.ro.q}</div>` : "") +
+    `<div class="model"><b>${cat.label} — model:</b> ${cat.model}</div>` +
+    `<div class="cue">🧠 cue: <i>${t.cue}</i></div>` +
+    `</div>`;
+}
+
+// ---- NUMBERS: every question whose correct answer contains a figure, grouped & sorted low→high ----
+const CARLEN_M = 4;   // rough car length, for a size comparison on distances
+const PITCH_M = 100;  // rough football-pitch length, for a size comparison on distances
+const NUM_GROUP_LABEL = {
+  speed: "⏱ Speed limits (km/h)",
+  distance: "📏 Distances (m / km)",
+  mass: "⚖️ Mass (kg / t)",
+  other: "🕐 Time & other numbers",
+};
+// Only the FIRST 5 correct answers of a question (the raw, unlabeled option text they were scraped
+// with, before shuffling) are indexed for a whole-answer label-reference check below — matches only when
+// EVERY correct option is nothing but "sign 2" / "route 3" / "tram 1, tram 2" (diagram labels from the
+// right-of-way image set, already covered by the Learn-by-pattern priority module) so they don't clutter
+// this list as if they were real regulatory figures.
+const LABEL_REF_RE = /^(sign|route|tram|car|motorcycle|truck|vehicle)\b[\s,\w.]*\d/i;
+
+function classifyNumberQuestion(qq) {
+  const text = qq.correct.map((k) => qq.a[k]).join(" | ");
+  const speedM = text.match(/(\d+(?:[.,]\d+)?)\s*km\/h/i);
+  if (speedM) return { key: "speed", sortVal: parseFloat(speedM[1].replace(",", ".")) };
+  const distM = text.match(/(\d+(?:[.,]\d+)?)\s*(km|m|cm)\b/i);
+  if (distM) {
+    let v = parseFloat(distM[1].replace(",", "."));
+    if (distM[2].toLowerCase() === "km") v *= 1000;
+    if (distM[2].toLowerCase() === "cm") v /= 100;
+    return { key: "distance", sortVal: v };
+  }
+  const massM = text.match(/(\d+(?:[.,]\d+)?)\s*(kg|t)\b/i);
+  if (massM) {
+    let v = parseFloat(massM[1].replace(",", "."));
+    if (massM[2].toLowerCase() === "t") v *= 1000;
+    return { key: "mass", sortVal: v };
+  }
+  const otherM = text.match(/(\d+(?:[.,]\d+)?)/);
+  if (otherM) {
+    if (qq.correct.every((k) => LABEL_REF_RE.test(qq.a[k].trim()))) return null; // diagram label, not a figure
+    return { key: "other", sortVal: parseFloat(otherM[1].replace(",", ".")) };
+  }
+  return null;
+}
+
+const NUMBER_ITEMS = QUESTIONS.map((qq, i) => ({ i, cls: classifyNumberQuestion(qq) }))
+  .filter((x) => x.cls)
+  .sort((a, b) => a.cls.sortVal - b.cls.sortVal);
+$("numCount").textContent = NUMBER_ITEMS.length;
+
+let numbersRendered = false;
+function highlightNumbers(text) { return text.replace(/(\d+(?:[.,]\d+)?)/g, '<b class="num">$1</b>'); }
+
+function numberCardHtml({ i, cls }) {
+  const qq = QUESTIONS[i], t = TOPICS[i], cat = CAT_BY_ID[t.cat];
+  const txt = textFor(i);
+  let assoc = "";
+  if (cls.key === "distance" && cls.sortVal > 0 && cls.sortVal <= 3000) {
+    const cars = Math.max(1, Math.round(cls.sortVal / CARLEN_M));
+    assoc = `<div class="cue">📏 ≈ ${cars} car${cars === 1 ? "" : "s"} bumper-to-bumper (${CARLEN_M} m each)` +
+      (cls.sortVal >= 60 ? `, ≈ ${(cls.sortVal / PITCH_M).toFixed(1)} football-pitch length${cls.sortVal >= PITCH_M * 1.5 ? "s" : ""}` : "") +
+      `</div>`;
+  } else if (cls.key === "speed" && cls.sortVal > 0) {
+    const mps = cls.sortVal / 3.6;
+    assoc = `<div class="cue">⏱ ${cls.sortVal} km/h ≈ ${mps.toFixed(1)} m/s — that's how far you travel every second at that speed</div>`;
+  }
+  return `<div class="card">` +
+    `<span class="tag">${cat.label}</span>` +
+    (qq.image ? `<img class="qimg" src="${qq.image}">` : "") +
+    `<p><b>${highlightNumbers(txt.q)}</b></p>` +
+    txt.a.map((a, k) => `<div class="opt${qq.correct.includes(k) ? " correct" : ""}">${"ABCDE"[k]}. ${highlightNumbers(a)}</div>`).join("") +
+    assoc +
+    `<div class="cue">🧠 cue: <i>${t.cue}</i></div>` +
+    `</div>`;
+}
+
+function renderNumbers() {
+  numbersRendered = true;
+  const groups = {};
+  NUMBER_ITEMS.forEach((x) => { (groups[x.cls.key] ||= []).push(x); });
+  $("numbersList").innerHTML = Object.keys(NUM_GROUP_LABEL).filter((k) => groups[k]?.length).map((k) =>
+    `<h3>${NUM_GROUP_LABEL[k]} — ${groups[k].length}</h3>` + groups[k].map(numberCardHtml).join("")
+  ).join("");
+}
+
+// ---- QUIZ MODE ----
+let deck, qi, score, quizCatSel, quizDeadline, quizTickHandle, mistakes, examAborted;
+const QUIZ_MIN = 30;
+const MAX_MISTAKES = 5; // exam stops on the 5th mistake — 4 wrong answers are still tolerated
+const MISTAKES_ALLOWED = MAX_MISTAKES - 1;
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function shuffledQuestion(idx) {
+  const qq = QUESTIONS[idx];
+  const order = shuffle(qq.a.map((_, k) => k));
+  const correctSet = new Set(qq.correct);
+  const correct = order.map((origK, newK) => (correctSet.has(origK) ? newK : -1)).filter((x) => x >= 0);
+  return { idx, order, correct, image: qq.image, _topic: TOPICS[idx] };
+}
+
+function startQuiz() {
+  quizCatSel = $("quizCat").value;
+  const pool = quizCatSel === "__weak"
+    ? QUESTIONS.map((_, i) => i).filter((i) => weakIds.has(IDS[i]))
+    : QUESTIONS.map((_, i) => i).filter((i) => !quizCatSel || TOPICS[i].cat === quizCatSel);
+  deck = shuffle(pool).slice(0, 26).map(shuffledQuestion);
+  qi = 0; score = 0; mistakes = 0; examAborted = false;
+  $("mistakes").textContent = `Mistakes: 0/${MISTAKES_ALLOWED}`;
+  $("mistakes").classList.remove("high");
+  $("quizMenu").hidden = true; $("quizResult").hidden = true; $("quizRun").hidden = false;
+  clearInterval(quizTickHandle);
+  quizDeadline = Date.now() + QUIZ_MIN * 60000;
+  quizTickHandle = setInterval(updateQuizTimer, 500);
+  updateQuizTimer();
+  showQuiz();
+}
+
+function updateQuizTimer() {
+  const s = Math.max(0, Math.round((quizDeadline - Date.now()) / 1000));
+  $("timer").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  $("timer").classList.toggle("low", s < 300);
+  if (s <= 0) finishQuiz();
+}
+
+function showQuiz() {
+  const q = deck[qi];
+  markSeen(IDS[q.idx]);
+  const txt = textFor(q.idx);
+  const a = q.order.map((k) => txt.a[k]);
+  $("progress").textContent = `Question ${qi + 1} / ${deck.length}`;
+  $("qcat").textContent = CAT_BY_ID[q._topic.cat].label;
+  $("qwarn").hidden = true;
+  $("qtext").innerHTML = (q.image ? `<img class="qimg" src="${q.image}">` : "") + `<span>${txt.q}</span>`;
+  const picked = q._picked || [];
+  $("opts").innerHTML = a.map((t, k) => `<label class="opt"><input type="checkbox" value="${k}"${picked.includes(k) ? " checked" : ""}>${"ABCDE"[k]}. ${t}</label>`).join("");
+  if (q._answered) {
+    // re-render the already-answered state (e.g. after a mid-question language switch) instead of
+    // resetting to a fresh unanswered look — otherwise nextBtn goes back to "Answer" -> submitQuiz,
+    // whose _answered guard then silently no-ops every click, stranding the user.
+    const cat = CAT_BY_ID[q._topic.cat];
+    $("qmodel").innerHTML = `<b>${cat.label} — model:</b> ${cat.model}<div class="cue">🧠 cue: <i>${q._topic.cue}</i></div>`;
+    $("qmodel").hidden = false;
+    document.querySelectorAll("#opts .opt").forEach((el, k) => {
+      el.querySelector("input").disabled = true;
+      if (q.correct.includes(k)) el.classList.add("correct");
+      else if (picked.includes(k)) el.classList.add("picked-wrong");
+    });
+    if (examAborted) { $("nextBtn").textContent = "Exam stopped — see result"; $("nextBtn").onclick = finishQuiz; }
+    else { $("nextBtn").textContent = "Next"; $("nextBtn").onclick = advanceQuiz; }
+  } else {
+    $("qmodel").hidden = true;
+    $("nextBtn").textContent = "Answer"; $("nextBtn").onclick = submitQuiz;
+  }
+}
+
+function picked() { return [...document.querySelectorAll("#opts input:checked")].map((c) => +c.value); }
+
+function submitQuiz() {
+  if (deck[qi]._answered) return; // ponytail: guard against a question being counted twice
+  deck[qi]._answered = true;
+  const q = deck[qi], p = picked();
+  const ok = p.length === q.correct.length && q.correct.every((c) => p.includes(c));
+  if (ok) score++; else mistakes++;
+  $("mistakes").textContent = `Mistakes: ${mistakes}/${MISTAKES_ALLOWED}`;
+  $("mistakes").classList.toggle("high", mistakes >= MAX_MISTAKES);
+  const qid = IDS[q.idx];
+  if (ok) weakIds.delete(qid); else weakIds.add(qid);
+  saveWeak(); refreshWeakOption();
+  document.querySelectorAll("#opts .opt").forEach((el, k) => {
+    el.querySelector("input").disabled = true;
+    if (q.correct.includes(k)) el.classList.add("correct");
+    else if (p.includes(k)) el.classList.add("picked-wrong");
+  });
+  const cat = CAT_BY_ID[q._topic.cat];
+  $("qmodel").innerHTML = `<b>${cat.label} — model:</b> ${cat.model}<div class="cue">🧠 cue: <i>${q._topic.cue}</i></div>`;
+  $("qmodel").hidden = false;
+  if (mistakes >= MAX_MISTAKES) {
+    examAborted = true;
+    $("nextBtn").textContent = "Exam stopped — see result"; $("nextBtn").onclick = finishQuiz;
+  } else {
+    $("nextBtn").textContent = "Next"; $("nextBtn").onclick = advanceQuiz;
+  }
+}
+
+function advanceQuiz() { if (++qi < deck.length) { deck[qi]._picked = undefined; showQuiz(); } else finishQuiz(); }
+
+function finishQuiz() {
+  clearInterval(quizTickHandle);
+  logRun("quiz", score, deck.length);
+  $("quizRun").hidden = true; $("quizResult").hidden = false;
+  const passed = !examAborted && score >= 22;
+  const answered = qi + 1;
+  $("quizResult").innerHTML = `<h2>Result: ${score} / ${deck.length}` +
+    ` — <span class="${passed ? "pass" : "fail"}">${passed ? "PASS ✓" : examAborted ? `RESPINS ✗ (stopped after ${MAX_MISTAKES} mistakes, question ${answered}/${deck.length})` : "needs work (22+ to pass)"}</span></h2>` +
+    `<button class="primary" onclick="location.reload()">Menu</button>`;
+}
+
+// ---- FULL RUN: every question, main + unresolved, fresh shuffle every run ----
+let fullDeck, fi, fScore, fScored, fStart, fTimerHandle;
+const FULL_TOTAL = QUESTIONS.length + UNRESOLVED.length;
+$("fullCount").textContent = FULL_TOTAL;
+$("fullMenuCount").textContent = FULL_TOTAL;
+
+function shuffledFullItem(src, idx) {
+  if (src === "q") {
+    const qq = QUESTIONS[idx];
+    const order = shuffle(qq.a.map((_, k) => k));
+    const correctSet = new Set(qq.correct);
+    const correct = order.map((origK, newK) => (correctSet.has(origK) ? newK : -1)).filter((x) => x >= 0);
+    return { src, idx, order, correct, wrong: [], image: qq.image, _topic: TOPICS[idx], scored: true };
+  }
+  const u = UNRESOLVED[idx];
+  const order = shuffle(u.a.map((_, k) => k));
+  const letterIdx = new Set(u.letters.map((l) => "ABCDE".indexOf(l)));
+  const scored = u.status === "candidate" && u.letters.length > 0;
+  const correct = scored ? order.map((origK, newK) => (letterIdx.has(origK) ? newK : -1)).filter((x) => x >= 0) : [];
+  const wrong = u.status === "rejected" ? order.map((origK, newK) => (letterIdx.has(origK) ? newK : -1)).filter((x) => x >= 0) : [];
+  return { src, idx, order, correct, wrong, image: u.image, scored, status: u.status };
+}
+
+function textForFullItem(item) { return item.src === "q" ? textFor(item.idx) : textForUnresolved(UNRESOLVED[item.idx]); }
+
+function startFull() {
+  const pool = [
+    ...QUESTIONS.map((_, i) => ({ src: "q", idx: i })),
+    ...UNRESOLVED.map((_, i) => ({ src: "u", idx: i })),
+  ];
+  fullDeck = shuffle(pool).map((p) => shuffledFullItem(p.src, p.idx));
+  fi = 0; fScore = 0; fScored = 0;
+  $("fullMenu").hidden = true; $("fullResult").hidden = true; $("fullRun").hidden = false;
+  clearInterval(fTimerHandle);
+  fStart = Date.now();
+  fTimerHandle = setInterval(updateFTimer, 500);
+  updateFTimer();
+  showFull();
+}
+
+function updateFTimer() {
+  const s = Math.round((Date.now() - fStart) / 1000);
+  $("ftimer").textContent = `⏱ ${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function showFull() {
+  const item = fullDeck[fi];
+  if (item.src === "q") markSeen(IDS[item.idx]);
+  const txt = textForFullItem(item);
+  const a = item.order.map((k) => txt.a[k]);
+  $("fprogress").textContent = `Question ${fi + 1} / ${fullDeck.length}`;
+  $("fscoreLive").textContent = `${fScore} / ${fScored} scored so far`;
+  $("fqcat").textContent = item.src === "q" ? CAT_BY_ID[item._topic.cat].label : "unresolved pool";
+  $("fqUnconfirmed").hidden = item.scored;
+  $("fqtext").innerHTML = (item.image ? `<img class="qimg" src="${item.image}">` : "") + `<span>${txt.q}</span>`;
+  const picked = item._picked || [];
+  $("fopts").innerHTML = a.map((t, k) => `<label class="opt"><input type="checkbox" value="${k}"${picked.includes(k) ? " checked" : ""}>${"ABCDE"[k]}. ${t}</label>`).join("");
+  if (item._answered) {
+    // re-render the already-answered state (e.g. after a mid-question language switch) instead of
+    // resetting to fresh — mirrors the Quiz-mode fix; submitFull has no re-submit guard so a reset
+    // here would let the user click Answer again and silently double-count fScore/fScored.
+    document.querySelectorAll("#fopts .opt input").forEach((el) => { el.disabled = true; });
+    if (item.scored) {
+      document.querySelectorAll("#fopts .opt").forEach((el, k) => {
+        if (item.correct.includes(k)) el.classList.add("correct");
+        else if (picked.includes(k)) el.classList.add("picked-wrong");
+      });
+    } else {
+      document.querySelectorAll("#fopts .opt").forEach((el, k) => { if (item.wrong.includes(k)) el.classList.add("picked-wrong"); });
+    }
+    if (item.src === "q") {
+      const cat = CAT_BY_ID[item._topic.cat];
+      $("fqmodel").innerHTML = `<b>${cat.label} — model:</b> ${cat.model}<div class="cue">🧠 cue: <i>${item._topic.cue}</i></div>`;
+    } else {
+      $("fqmodel").innerHTML = item.scored
+        ? `<div class="cue">Best guess only, not yet confirmed on the real site.</div>`
+        : item.status === "rejected"
+        ? `<div class="cue">No confirmed answer yet — option(s) highlighted in red were tried on the real site and marked wrong.</div>`
+        : `<div class="cue">No confirmed or candidate answer yet — not scored.</div>`;
+    }
+    $("fqmodel").hidden = false;
+    $("fnextBtn").textContent = "Next"; $("fnextBtn").onclick = advanceFull;
+  } else {
+    $("fqmodel").hidden = true;
+    $("fnextBtn").textContent = "Answer"; $("fnextBtn").onclick = submitFull;
+  }
+}
+
+function pickedFull() { return [...document.querySelectorAll("#fopts input:checked")].map((c) => +c.value); }
+
+function submitFull() {
+  const item = fullDeck[fi];
+  if (item._answered) return; // ponytail: guard against double-scoring, mirrors Quiz mode
+  item._answered = true;
+  const p = pickedFull();
+  item._picked = p;
+  document.querySelectorAll("#fopts .opt input").forEach((el) => { el.disabled = true; });
+  if (item.scored) {
+    const ok = p.length === item.correct.length && item.correct.every((c) => p.includes(c));
+    fScored++; if (ok) fScore++;
+    if (item.src === "q") {
+      const qid = IDS[item.idx];
+      if (ok) weakIds.delete(qid); else weakIds.add(qid);
+      saveWeak(); refreshWeakOption();
+    }
+    document.querySelectorAll("#fopts .opt").forEach((el, k) => {
+      if (item.correct.includes(k)) el.classList.add("correct");
+      else if (p.includes(k)) el.classList.add("picked-wrong");
+    });
+  } else {
+    document.querySelectorAll("#fopts .opt").forEach((el, k) => { if (item.wrong.includes(k)) el.classList.add("picked-wrong"); });
+  }
+  if (item.src === "q") {
+    const cat = CAT_BY_ID[item._topic.cat];
+    $("fqmodel").innerHTML = `<b>${cat.label} — model:</b> ${cat.model}<div class="cue">🧠 cue: <i>${item._topic.cue}</i></div>`;
+  } else {
+    $("fqmodel").innerHTML = item.scored
+      ? `<div class="cue">Best guess only, not yet confirmed on the real site.</div>`
+      : item.status === "rejected"
+      ? `<div class="cue">No confirmed answer yet — option(s) highlighted in red were tried on the real site and marked wrong.</div>`
+      : `<div class="cue">No confirmed or candidate answer yet — not scored.</div>`;
+  }
+  $("fqmodel").hidden = false;
+  $("fscoreLive").textContent = `${fScore} / ${fScored} scored so far`;
+  $("fnextBtn").textContent = "Next"; $("fnextBtn").onclick = advanceFull;
+}
+
+function advanceFull() { if (++fi < fullDeck.length) showFull(); else finishFull(); }
+
+function finishFull() {
+  clearInterval(fTimerHandle);
+  logRun("full", fScore, fScored);
+  const s = Math.round((Date.now() - fStart) / 1000);
+  const elapsed = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  $("fullRun").hidden = true; $("fullResult").hidden = false;
+  $("fullResult").innerHTML = `<h2>Result: ${fScore} / ${fScored} scored` +
+    ` (${fullDeck.length - fScored} unresolved pool questions shown, unscored)</h2>` +
+    `<p class="muted">Time: ${elapsed}</p>` +
+    `<button class="primary" onclick="location.reload()">Menu</button>`;
+}
+
+// ---- LEARN BY PATTERN: rote drill, instant feedback, no scoring ----
+let drillDeck, di, readKey, readPage;
+
+function startRead(key) {
+  readKey = key; readPage = 1;
+  $("drillMenu").hidden = true; $("drillReadPane").hidden = false;
+  renderRead();
+}
+
+function renderRead() {
+  const slice = DRILL_SETS[readKey].slice(0, readPage * PAGE_SIZE);
+  $("drillReadList").innerHTML = slice.map((i) => cardHtml(QUESTIONS[i], TOPICS[i], i)).join("");
+}
+
+function backToDrillMenu() {
+  $("drillReadPane").hidden = true; $("drillRun").hidden = true; $("drillResult").hidden = true;
+  $("drillMenu").hidden = false;
+}
+
+function startDrill(key) {
+  drillDeck = shuffle(DRILL_SETS[key]).map(shuffledQuestion);
+  di = 0;
+  $("drillMenu").hidden = true; $("drillResult").hidden = true; $("drillRun").hidden = false;
+  showDrill();
+}
+
+function showDrill() {
+  const q = drillDeck[di];
+  markSeen(IDS[q.idx]);
+  const txt = textFor(q.idx);
+  const a = q.order.map((k) => txt.a[k]);
+  $("dprogress").textContent = `Question ${di + 1} / ${drillDeck.length}`;
+  $("dqcat").textContent = CAT_BY_ID[q._topic.cat].label;
+  $("dqtext").innerHTML = (q.image ? `<img class="qimg" src="${q.image}">` : "") + `<span>${txt.q}</span>`;
+  $("dqmodel").hidden = true;
+  $("dnextBtn").textContent = "Answer"; $("dnextBtn").onclick = submitDrill;
+  $("dopts").innerHTML = a.map((t, k) => `<label class="opt"><input type="checkbox" value="${k}">${"ABCDE"[k]}. ${t}</label>`).join("");
+}
+
+function pickedDrill() { return [...document.querySelectorAll("#dopts input:checked")].map((c) => +c.value); }
+
+function submitDrill() {
+  const q = drillDeck[di], p = pickedDrill();
+  const ok = p.length === q.correct.length && q.correct.every((c) => p.includes(c));
+  const qid = IDS[q.idx];
+  if (ok) weakIds.delete(qid); else weakIds.add(qid);
+  saveWeak(); refreshWeakOption();
+  document.querySelectorAll("#dopts .opt").forEach((el, k) => {
+    el.querySelector("input").disabled = true;
+    if (q.correct.includes(k)) el.classList.add("correct");
+    else if (p.includes(k)) el.classList.add("picked-wrong");
+  });
+  const cat = CAT_BY_ID[q._topic.cat];
+  $("dqmodel").innerHTML = `<b>${cat.label} — model:</b> ${cat.model}<div class="cue">🧠 cue: <i>${q._topic.cue}</i></div>`;
+  $("dqmodel").hidden = false;
+  $("dnextBtn").textContent = "Next"; $("dnextBtn").onclick = advanceDrill;
+}
+
+function advanceDrill() { if (++di < drillDeck.length) showDrill(); else finishDrill(); }
+
+function finishDrill() {
+  $("drillRun").hidden = true; $("drillResult").hidden = false;
+  $("drillResult").innerHTML = `<h2>Done — ${drillDeck.length} questions reviewed 🎉</h2>` +
+    `<button class="primary" onclick="location.reload()">Menu</button>`;
+}
+
+renderStudy();
+</script>
+</body>
+</html>
