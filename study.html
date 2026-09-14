@@ -5,20 +5,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DRPCIV">
 <meta name="theme-color" content="#1b5e20">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>DRPCIV Study — category B</title>
 <style>
-  :root { color-scheme: light; }
-  body { font-family: -apple-system, sans-serif; max-width: 780px; margin: 0 auto; padding: 16px; line-height: 1.5; color: #1a1a1a; background: #fafafa; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .muted { color: #666; font-size: 13px; }
-  #tabSelect { display: block; width: 100%; margin: 14px 0; padding: 12px 10px; border-radius: 8px; border: 1px solid #888; background: #fff; font-size: 16px; font-weight: 600; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8; --card: #fff; --text: #1a1a1a; --muted: #666;
+    --border: #e2e2e6; --accent: #1b5e20; --accent-text: #fff;
+    --danger: #c62828; --danger-bg: #ffebee; --good-bg: #e8f5e9;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0f11; --card: #1c1d20; --text: #f0f0f0; --muted: #9a9a9a;
+      --border: #2f3033; --accent: #34a853; --accent-text: #05170a;
+      --danger: #ff6b6b; --danger-bg: #3a1a1a; --good-bg: #123a1e;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    max-width: 780px; margin: 0 auto; line-height: 1.5; color: var(--text); background: var(--bg);
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    touch-action: manipulation;
+  }
+  h1 { font-size: 21px; margin: 4px 0 4px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #tabSelect {
+    display: block; width: 100%; margin: 14px 0; padding: 13px 12px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; font-weight: 600;
+    position: sticky; top: 8px; z-index: 40; box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
   #loading { font-weight: 600; }
-  select, input[type=text] { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+  select, input[type=text] { padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; }
   #controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; align-items: center; }
   #controls input[type=text] { flex: 1; min-width: 160px; }
-  .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 10px 0; background: #fff; }
-  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #e3edff; color: #1e3a8a; margin-right: 6px; }
+  .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 10px 0; background: var(--card); box-shadow: var(--shadow); }
+  .tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: #e3edff; color: #1e3a8a; margin: 0 6px 6px 0; }
   .tag[hidden] { display: none; }
   .tag.warn { background: #fff3cd; color: #7a5b00; }
   .tag.candidate { background: #e0f2fe; color: #075985; }
@@ -28,29 +57,46 @@
   .banner.candidate { background: #e0f2fe; color: #075985; }
   .banner.rejected { background: #fee2e2; color: #991b1b; }
   .banner.unknown { background: #ede9fe; color: #5b21b6; }
-  .ruledout { font-size: 12px; color: #991b1b; margin-top: 6px; }
-  img.qimg { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
-  .opt { display: block; margin: 6px 0; padding: 9px 10px; border: 1px solid #ddd; border-radius: 8px; }
-  .opt.correct { background: #e8f5e9; border-color: #2e7d32; font-weight: 600; }
-  .opt.picked-wrong { background: #ffebee; border-color: #c62828; }
-  .opt input { margin-right: 8px; }
-  .model { font-size: 13px; background: #f5f5f5; border-left: 3px solid #1b5e20; padding: 8px 10px; border-radius: 4px; margin-top: 10px; }
-  .cue { font-size: 12px; color: #7a5b00; margin-top: 6px; }
-  .ro { font-size: 12px; color: #888; font-style: italic; margin-top: 6px; }
-  button.primary { padding: 10px 18px; border-radius: 8px; border: 1px solid #1b5e20; background: #1b5e20; color: #fff; cursor: pointer; font-size: 15px; }
-  button.ghost { padding: 10px 18px; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 15px; }
+  .ruledout { font-size: 12px; color: var(--danger); margin-top: 6px; }
+  img.qimg { max-width: 100%; border-radius: 10px; margin: 8px 0; display: block; }
+  .opt {
+    display: block; margin: 8px 0; padding: 12px 14px; min-height: 44px; border: 1px solid var(--border);
+    border-radius: 12px; background: var(--card); transition: background .15s, border-color .15s;
+  }
+  .opt:active { background: var(--bg); }
+  .opt.correct { background: var(--good-bg); border-color: #2e7d32; font-weight: 600; }
+  .opt.picked-wrong { background: var(--danger-bg); border-color: var(--danger); }
+  .opt input { margin-right: 10px; transform: scale(1.15); vertical-align: middle; }
+  .model { font-size: 13px; background: color-mix(in srgb, var(--card) 60%, var(--bg)); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 6px; margin-top: 10px; }
+  .cue { font-size: 12px; color: #b28900; margin-top: 6px; }
+  .ro { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 6px; }
+  button { font-family: inherit; }
+  button.primary, button.ghost {
+    padding: 13px 20px; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600;
+    transition: transform .08s, opacity .15s;
+  }
+  button.primary:active, button.ghost:active { transform: scale(.97); }
+  button.primary { border: none; background: var(--accent); color: var(--accent-text); }
+  button.ghost { border: 1px solid var(--border); background: var(--card); color: var(--text); }
+  .wide { display: block; width: 100%; }
+  .btn-fixed {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: min(748px, calc(100% - 32px)); z-index: 45; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  }
+  .btn-fixed:active { transform: translateX(-50%) scale(.97); }
   #bar { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
-  #timer.low { color: #c62828; }
-  #mistakes.high { color: #c62828; }
+  #timer.low { color: var(--danger); }
+  #mistakes.high { color: var(--danger); }
   .num { background: #fff3cd; color: #7a5b00; padding: 0 3px; border-radius: 3px; font-weight: 700; }
   #numbersList h3 { font-size: 15px; margin: 22px 0 4px; }
   #numbersList h3:first-child { margin-top: 8px; }
-  .pass { color: #1b5e20; } .fail { color: #c62828; }
+  .pass { color: var(--accent); } .fail { color: var(--danger); }
   #catList { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
-  #catList span { font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid #ccc; cursor: pointer; user-select: none; }
-  #catList span.on { background: #1b5e20; color: #fff; border-color: #1b5e20; }
+  #catList span { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); cursor: pointer; user-select: none; }
+  #catList span.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
   #langBar { display: flex; gap: 6px; margin: 8px 0; }
-  #langBar button { padding: 6px 14px; border-radius: 999px; border: 1px solid #888; background: #fff; cursor: pointer; font-size: 13px; }
+  #langBar button { padding: 7px 15px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 13px; width: auto; }
   #langBar button.active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
 </style>
 </head>
@@ -95,7 +141,7 @@
     wrong beats another random run: research on retrieval practice consistently shows targeted re-testing
     outperforms passive re-reading or unfocused repetition.</p>
     <select id="quizCat"></select>
-    <button class="primary" onclick="startQuiz()">Start quiz</button>
+    <button class="primary wide" onclick="startQuiz()">Start quiz</button>
   </div>
   <div id="quizRun" hidden>
     <div id="bar"><span id="progress"></span><span id="mistakes"></span><span id="timer"></span></div>
@@ -105,7 +151,7 @@
       <div id="opts"></div>
       <div class="model" id="qmodel" hidden></div>
     </div>
-    <button class="primary" id="nextBtn" onclick="submitQuiz()">Answer</button>
+    <button class="primary btn-fixed" id="nextBtn" onclick="submitQuiz()">Answer</button>
   </div>
   <div id="quizResult" hidden></div>
 </div>
@@ -125,7 +171,7 @@
     <p class="muted"><span id="fullMenuCount"></span> questions total — the whole main bank plus the
     unresolved pool that has no site-confirmed answer yet. Question order and option order reshuffle
     every run.</p>
-    <button class="primary" onclick="startFull()">Start full run</button>
+    <button class="primary wide" onclick="startFull()">Start full run</button>
   </div>
   <div id="fullRun" hidden>
     <div id="fbar" style="display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:8px">
@@ -138,7 +184,7 @@
       <div id="fopts"></div>
       <div class="model" id="fqmodel" hidden></div>
     </div>
-    <button class="primary" id="fnextBtn" onclick="submitFull()">Answer</button>
+    <button class="primary btn-fixed" id="fnextBtn" onclick="submitFull()">Answer</button>
   </div>
   <div id="fullResult" hidden></div>
 </div>
@@ -163,7 +209,7 @@
       <div id="dopts"></div>
       <div class="model" id="dqmodel" hidden></div>
     </div>
-    <button class="primary" id="dnextBtn" onclick="submitDrill()">Answer</button>
+    <button class="primary btn-fixed" id="dnextBtn" onclick="submitDrill()">Answer</button>
   </div>
   <div id="drillResult" hidden></div>
   <div id="drillReadPane" hidden>
@@ -582,7 +628,7 @@ function finishQuiz() {
   const answered = qi + 1;
   $("quizResult").innerHTML = `<h2>Result: ${score} / ${deck.length}` +
     ` — <span class="${passed ? "pass" : "fail"}">${passed ? "PASS ✓" : examAborted ? `RESPINS ✗ (stopped after ${MAX_MISTAKES} mistakes, question ${answered}/${deck.length})` : "needs work (22+ to pass)"}</span></h2>` +
-    `<button class="primary" onclick="location.reload()">Menu</button>`;
+    `<button class="primary wide" onclick="location.reload()">Menu</button>`;
 }
 
 // ---- FULL RUN: every question, main + unresolved, fresh shuffle every run ----
@@ -723,7 +769,7 @@ function finishFull() {
   $("fullResult").innerHTML = `<h2>Result: ${fScore} / ${fScored} scored` +
     ` (${fullDeck.length - fScored} unresolved pool questions shown, unscored)</h2>` +
     `<p class="muted">Time: ${elapsed}</p>` +
-    `<button class="primary" onclick="location.reload()">Menu</button>`;
+    `<button class="primary wide" onclick="location.reload()">Menu</button>`;
 }
 
 // ---- LEARN BY PATTERN: rote drill, instant feedback, no scoring ----
@@ -789,7 +835,7 @@ function advanceDrill() { if (++di < drillDeck.length) showDrill(); else finishD
 function finishDrill() {
   $("drillRun").hidden = true; $("drillResult").hidden = false;
   $("drillResult").innerHTML = `<h2>Done — ${drillDeck.length} questions reviewed 🎉</h2>` +
-    `<button class="primary" onclick="location.reload()">Menu</button>`;
+    `<button class="primary wide" onclick="location.reload()">Menu</button>`;
 }
 
 $("loading").hidden = true;
