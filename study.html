@@ -201,6 +201,7 @@
 <script src="topics.js"></script>
 <script src="unresolved.js"></script>
 <script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 const $ = (id) => document.getElementById(id);
 const CAT_BY_ID = Object.fromEntries(TOPIC_CATS.map(c => [c.id, c]));
 $("bank").textContent = `${QUESTIONS.length} questions, ${TOPIC_CATS.length} topics.`;
