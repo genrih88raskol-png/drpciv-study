@@ -27,7 +27,9 @@
     }
   }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  html { background: var(--bg); }
+  /* ponytail: without this, the fixed bottom button re-centers (jumps) every time a question's
+     height crosses the scrollbar threshold, since left:50% then measures a different viewport width */
+  html { background: var(--bg); overflow-y: scroll; scrollbar-gutter: stable; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     max-width: 780px; margin: 0 auto; line-height: 1.5; color: var(--text); background: var(--bg);
@@ -46,6 +48,10 @@
   select, input[type=text] { padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; }
   #controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; align-items: center; }
   #controls input[type=text] { flex: 1; min-width: 160px; }
+  .speeds table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 13px; display: block; overflow-x: auto; }
+  .speeds th, .speeds td { border: 1px solid var(--border); padding: 5px 4px; text-align: center; hyphens: auto; }
+  .speeds td:first-child { text-align: left; }
+  .speeds ul { margin: 4px 0; padding-left: 20px; }
   .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 10px 0; background: var(--card); box-shadow: var(--shadow); }
   .tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: #e3edff; color: #1e3a8a; margin: 0 6px 6px 0; }
   .tag[hidden] { display: none; }
@@ -79,12 +85,16 @@
   button.primary { border: none; background: var(--accent); color: var(--accent-text); }
   button.ghost { border: 1px solid var(--border); background: var(--card); color: var(--text); }
   .wide { display: block; width: 100%; }
+  /* ponytail: centered with margin:auto, NOT transform — button.primary:active's scale() used to override
+     translateX(-50%) (higher specificity) so the button jumped sideways on tap, and iOS hit-tests a
+     transformed fixed element at its untransformed spot (only the right half was tappable) */
   .btn-fixed {
-    position: fixed; left: 50%; transform: translateX(-50%);
+    position: fixed; left: 0; right: 0; margin: 0 auto;
     bottom: calc(14px + env(safe-area-inset-bottom));
     width: min(748px, calc(100% - 32px)); z-index: 45; box-shadow: 0 6px 24px rgba(0,0,0,.25);
   }
-  .btn-fixed:active { transform: translateX(-50%) scale(.97); }
+  button.btn-fixed, button.btn-fixed:active { transform: none; transition: opacity .1s; }
+  button.btn-fixed:active { opacity: .8; }
   #bar { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
   #timer.low { color: var(--danger); }
   #mistakes.high { color: var(--danger); }
@@ -116,7 +126,7 @@
   <option value="quiz">📝 Quiz (shuffled options)</option>
   <option id="tabUnresolved" value="unresolved">⚠️ Unresolved</option>
   <option id="tabFull" value="full">🔁 Full run</option>
-  <option value="drill">🎯 Learn by pattern</option>
+  <option value="drill">🎯 Learn by pattern · 🔀 Look-alikes</option>
   <option id="tabNumbers" value="numbers">🔢 Numbers</option>
 </select>
 <p id="loading" class="muted">⏳ Loading question bank…</p>
@@ -142,6 +152,10 @@
     outperforms passive re-reading or unfocused repetition.</p>
     <select id="quizCat"></select>
     <button class="primary wide" onclick="startQuiz()">Start quiz</button>
+    <p style="display:flex;gap:8px;margin-top:8px">
+      <button class="ghost" style="flex:1" onclick="switchTab('drill');startRead('weak')">📖 Weak spots: read answers</button>
+      <button class="ghost" style="flex:1" onclick="switchTab('drill');startDrill('weak')">📝 Weak spots: test all</button>
+    </p>
   </div>
   <div id="quizRun" hidden>
     <div id="bar"><span id="progress"></span><span id="mistakes"></span><span id="timer"></span></div>
@@ -165,12 +179,12 @@
   <div id="unresolvedList"></div>
 </div>
 
-<!-- FULL RUN: every question in the bank, main + unresolved, fresh shuffle every run -->
+<!-- FULL RUN: the rest of the current cycle — every verified question not yet shown, shuffled -->
 <div id="fullPane" hidden>
   <div id="fullMenu">
-    <p class="muted"><span id="fullMenuCount"></span> questions total — the whole main bank plus the
-    unresolved pool that has no site-confirmed answer yet. Question order and option order reshuffle
-    every run.</p>
+    <p class="muted"><b><span id="fullMenuCount"></span></b> verified questions left in this cycle — continues
+    where you stopped: everything already shown (Quiz, Full run, drills) is skipped, the rest comes in random
+    order. When the whole bank is done, a new cycle starts automatically (or press 🔄 new cycle above).</p>
     <button class="primary wide" onclick="startFull()">Start full run</button>
   </div>
   <div id="fullRun" hidden>
@@ -198,6 +212,13 @@
     <table style="border-collapse:collapse;width:100%;margin:10px 0">
       <tbody id="drillSetRows"></tbody>
     </table>
+    <h2 id="lookAlikes" style="font-size:17px;margin:18px 0 4px">🔀 Look-alikes — easy to confuse</h2>
+    <p class="muted">Questions with almost the same wording but different answers, plus whole subjects that mix
+    up (railway, certificates, parking…). <b>Read answers</b> puts the twins next to each other so you can
+    see exactly what differs — good for copying into your notebook. Then <b>Test yourself</b>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:10px 0">
+      <tbody id="lookRows"></tbody>
+    </table>
   </div>
   <div id="drillRun" hidden>
     <div id="dbar" style="display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:8px">
@@ -224,6 +245,46 @@
   <p class="muted">Every rule with a number in its correct answer — stopping/overtaking distances, speed
   limits, masses, deadlines — grouped by kind and sorted low→high, so the values form one memorable ladder
   instead of scattered facts. Distances also get a rough size comparison to anchor them.</p>
+  <!-- ponytail: static cheat sheet, every figure copied from a verified answer in the bank; recheck if speed answers change -->
+  <div class="card speeds">
+    <h2 style="font-size:18px;margin:0 0 8px">⏱ Speed limits — the whole system on one card</h2>
+    <p><b>Rule 1 — the ladder (car, cat. B):</b> outside towns the better the road, the faster.</p>
+    <table>
+      <tr><th></th><th>Motor&shy;way</th><th>Express&shy;way</th><th>E road</th><th>Other roads</th><th>Town</th></tr>
+      <tr><td><b>Normal</b></td><td><b>130</b></td><td><b>120</b></td><td><b>100</b></td><td><b>90</b></td><td><b>50</b></td></tr>
+      <tr><td><b>Novice</b> &lt;1 yr</td><td>110</td><td>100*</td><td>80</td><td>70</td><td>50</td></tr>
+      <tr><td><b>B1</b></td><td>90</td><td>85</td><td>80</td><td>70</td><td>50</td></tr>
+    </table>
+    <p class="muted">Запомни ряд <b>130 → 120 → 100 → 90</b>: «тринадцать, двенадцать, сотня, девяносто», шаги −10, −20, −10.
+    <b>Новичок</b> со стажем меньше года: везде за городом <b>на 20 меньше</b>, отсюда 110 / 100 / 80 / 70 (в городе так и остаётся 50).
+    *100 на expressway в банке не спрашивают, это просто по правилу −20.
+    <b>B1</b> — особый ряд 90 / 85 / 80 / 70, нужно просто вызубрить.
+    Car + semi-trailer on an E road: <b>90</b>.</p>
+
+    <p><b>Rule 2 — «30 / 50»:</b> one number pair for every dangerous situation: <b>30 km/h in town, 50 km/h outside</b>.</p>
+    <ul>
+      <li>visibility <b>under 100 m</b> — fog, heavy rain, heavy snow</li>
+      <li>black ice, ice, packed snow, <b>slush</b>, wet cobblestones</li>
+      <li>particularly dangerous curves, or curves with visibility <b>under 50 m</b></li>
+      <li>passing organized groups, military convoys, processions (single lane per direction); passing animals</li>
+      <li>turning left at an unregulated intersection; going through an intersection with undirected traffic</li>
+      <li>marked pedestrian crossing without traffic lights, pedestrians about to cross (1 lane per direction)</li>
+      <li>in town only (30): "Children" sign 07:00–22:00, "Accident" sign zone, roads with bumps</li>
+    </ul>
+    <p class="muted">Логика: если в вопросе есть опасность (плохо видно, скользко, люди или животные на дороге, опасный поворот), ответ почти всегда «30 в городе / 50 за городом».
+    Обрати внимание на два разных числа видимости: <b>100 m</b> для тумана, дождя и снега, <b>50 m</b> для поворотов.</p>
+
+    <p><b>Rule 3 — the small numbers:</b></p>
+    <table>
+      <tr><td>🚶 Pedestrian zone</td><td><b>5</b></td><td class="muted">шагом</td></tr>
+      <tr><td>🏡 Residential area</td><td><b>20</b></td><td class="muted">pedestrians use the whole road</td></tr>
+      <tr><td>🚋 Lowest limit a road admin may set in town</td><td><b>10</b> trams · <b>30</b> vehicles</td><td></td></tr>
+      <tr><td>⬆️ Highest limit a road admin may set in town (A, B)</td><td><b>80</b></td><td></td></tr>
+      <tr><td>🛣 Not allowed on motorway</td><td>can't exceed <b>50</b></td><td class="muted">tractors, slow vehicles; car + trailer OK if it can do &gt; 50</td></tr>
+    </table>
+
+    <p><b>Rule 4 — speeding penalties:</b> +10–20 and +31–40 km/h → <b>penalty points</b>; more than <b>+50</b> km/h → fine + <b>licence suspension</b>.</p>
+  </div>
   <div id="numbersList"></div>
 </div>
 
@@ -303,12 +364,23 @@ function markSeen(qid) {
   localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIds]));
   renderCoverage();
 }
+// New cycle: forget which questions were shown so the whole bank gets re-drawn in a fresh random order.
+const CYCLE_KEY = "drpciv_cycle";
+function resetSeen() {
+  seenIds = new Set();
+  localStorage.setItem(SEEN_KEY, "[]");
+  localStorage.setItem(CYCLE_KEY, (+localStorage.getItem(CYCLE_KEY) || 1) + 1);
+  renderCoverage();
+}
 function incRunsTotal() { localStorage.setItem(RUNS_KEY, (+localStorage.getItem(RUNS_KEY) || 0) + 1); }
 function renderCoverage() {
   const runs = +localStorage.getItem(RUNS_KEY) || 0;
   const total = QUESTIONS.length, seen = seenIds.size;
   $("coverageBar").hidden = false;
-  $("coverageBar").textContent = `📊 ${runs} run${runs === 1 ? "" : "s"} total · seen ${seen}/${total} questions (${total - seen} never shown yet)`;
+  const cycle = +localStorage.getItem(CYCLE_KEY) || 1;
+  renderFullCount(); // hoisted from the FULL RUN section
+  $("coverageBar").innerHTML = `📊 ${runs} run${runs === 1 ? "" : "s"} total · cycle ${cycle} · seen ${seen}/${total} questions (${total - seen} never shown yet)` +
+    ` &nbsp;<button class="ghost" style="padding:2px 8px;font-size:11px" onclick="confirm('Start a new cycle? Seen-counter resets, all questions come back in random order.') && resetSeen()">🔄 new cycle</button>`;
 }
 renderCoverage();
 
@@ -316,24 +388,107 @@ $("tabUnresolved").textContent = `⚠️ Unresolved (${UNRESOLVED.length})`;
 
 // ---- LEARN BY PATTERN: drill sets grouped by answer shape ----
 const DRILL_SETS = {
+  get weak() { return QUESTIONS.map((_, i) => i).filter((i) => weakIds.has(IDS[i])); }, // live: weak list changes as you answer
   c1: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 1),
   c2: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 2),
   c3: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 3),
   priorityImg: QUESTIONS.map((_, i) => i).filter((i) => TOPICS[i].cat === "priority" && QUESTIONS[i].image),
 };
 const DRILL_LABELS = {
+  weak: "⚠️ Weak spots — questions you got wrong",
   c1: "1 correct answer",
   c2: "2 correct answers",
   c3: "3 correct answers",
   priorityImg: "🚦 Right-of-way images — who goes first",
 };
-$("drillSetRows").innerHTML = Object.entries(DRILL_SETS).map(([key, set]) =>
+// ---- LOOK-ALIKES: confusable questions side by side (same wording, different answers / same subject) ----
+// Topic groups: regex over the English stem (and answers where noted). Edit this list to add a topic.
+const LOOK_THEMES = [
+  ["🚆 Railway / level crossings", /\brail(way)?\b|level crossing|barrier|railway agent/i],
+  ["🚋 Trams", /\btram/i],
+  ["📄 Registration certificate, plates, deregistration, inspection", /certificat|registration|deregist|plates|technical inspection|immobiliz|confiscat/i, true],
+  ["🪪 Driving licence, suspension, penalty points", /licen[cs]e|suspen|penalty points/i],
+  ["⚖️ Fines, criminal offences, sanctions", /sanction|penali[sz]|punish|criminal|offence|contravention|fine\b/i],
+  ["🍺 Alcohol, drugs, fatigue, vigilance", /alcohol|drug|psychoactive|tired|fatigue|medicine|vigilance|aggressive/i],
+  ["🛑 Stopping forbidden", /\bstop(ping)?\b[^?]*(forbid|prohibit|not permitted)|(forbid|prohibit)[^?]*\bstop|voluntary stopping/i],
+  ["🅿️ Parking / standing", /\bpark|standing/i],
+  ["✋ Who you must stop for (signals of police, staff, blind persons…)", /stop[^?]*(at|to) the signals?|signals? given by|stop the vehicle( you are driving)?:|obliged to stop|must stop|signal of blind|authorized personnel|briskly/i],
+  ["🐢 Reduce speed / not allowed to speed up", /reduc\w* (the |your )?(travel )?speed|speed (is|will be|must be) reduced|increas\w* (your |the )?(vehicle's )?(travel )?speed|speed regime/i],
+  ["⏱ Speed limits (km/h)", /km\/h|maximum speed|speed limit/i, true],
+  ["↩️ U-turn / turning around", /turn(ing)? (the |a )?(vehicle )?around|u-turn/i],
+  ["⬅️ Reversing", /revers/i],
+  ["🚗 Overtaking", /overtak/i],
+  ["↪️ Turning & signalling a change of direction", /change of direction|turn(ing)? (left|right)|direction indicator/i],
+  ["🛣 Motorway / expressway / highway", /motorway|expressway|highway/i],
+  ["🚇 Tunnels", /tunnel/i],
+  ["👮 Police officer signals", /police officer|policeman|traffic police|arm extended|arm raised/i],
+  ["🚦 Traffic lights", /traffic.light|traffic signal|flashing yellow|green (signal|light|arrow)|red (signal|light)|signal-controlled|directed intersection/i],
+  ["🚑 Priority vehicles (blue lights, ambulance, convoys)", /blue|ambulance|fire|convoy|priority-regime|special (warning|audible)/i],
+  ["✖️ Right of way at intersections (unregulated, Stop, Give way, road class)", /unregulated|undirected|give way|yield|right of way|have priority|priority is given|priority (over|for) oncoming|types of signalling|stop" sign|stop sign|roundabout|national road|county road|communal|forestry road/i],
+  ["🪧 Signs: placement, end of effect", /sign installed|effect of prohibition|signs? (installed )?on the left side|additional panel/i],
+  ["🚶 Pedestrians & crossings", /pedestrian|refuge island|zebra|blind person/i],
+  ["🚌 Buses, stops, public transport", /\bbus\b|buses|public transport|bus stop/i],
+  ["🚲 Cyclists, mopeds, motorcycles", /cycl|moped|motorcycl/i],
+  ["🚜 Tractors, trailers, towing, caravans, animal-drawn", /tractor|trailer|tow(ing|ed)?\b|animal-drawn|\bcart\b|caravan|attached/i],
+  ["📦 Loads, luggage, roof rack", /\bload|luggage|roof|dimensions|objects/i],
+  ["🚘 Column driving & following distance", /column|distance from the vehicle|vehicle ahead|vehicle in front/i],
+  ["💡 Lights (low/high beam, fog, hazard)", /beam|headlight|fog light|hazard|position lights|\blights\b|lighting system|at night/i],
+  ["🌫 Weather & skidding (fog, ice, snow, rain, aquaplaning)", /fog|black ice|\bice\b|icy|snow|rain|wet|aquaplan|skid|atmospheric|weather conditions|cobblestone|rear-wheel/i],
+  ["〰️ Road markings & lanes, one-way streets", /marking|continuous|\blanes?\b|carriageway|kerb|shoulder|one-way/i],
+  ["📣 Horn / audible & light signals", /horn|audible|sound signal|light signal|signalling device/i],
+  ["💥 Road accident obligations", /accident|collision|scene|involved|events (likely|that could) (to )?endanger/i],
+  ["🩹 First aid", /first aid|first-aid|bleed|hemorrh|haemorrh|wound|fracture|burn|tourniquet|victim|injur|unconscious|breath|resuscit|bandage|airway|heart|casualty|antiseptic/i],
+  ["🔧 Vehicle faults & maintenance", /brak|steering|tyre|tire|engine|oil|battery|clutch|gearbox|wiper|exhaust|fault|defect|damaged vehicle|thermostat|lubricat|generator|antifreeze|dashboard|warning light|technical problems|must be equipped|equipped with|airbag/i],
+  ["🌿 Fuel economy / eco-driving", /fuel|consumption|\beco|pollut|emission|euro i|air-condition/i],
+  ["👶 Seat belts, children, passengers, driver position", /seat belt|belt\b|child|passenger|helmet|position of the driver|getting into/i],
+  ["🚫 When driving / the vehicle is forbidden", /driving[^?]*forbidden|forbidden to drive|can no longer drive|cannot be driven|into circulation|forbidden to be equipped|disturb the proper operation|speed-measuring|damaged vehicle/i],
+  ["📋 Drivers are forbidden / obliged (general lists)", /drivers? (is |are )?(forbidden|obliged|required)|it is forbidden:|obligations do you have, as a driver|obligations before setting off|moving off|order:|border area|leaving a yard/i],
+  ["🚙 Vehicle categories (B, B1, BE…)", /categor/i],
+  ["🛡 Preventive (defensive) driving, field of vision", /preventive|defensive|cautious driver|field of vision|vision problems|ball rolling|elderly person|"animals"/i],
+];
+const LOOK = []; // [label, idx[]]
+for (const [label, re, inAnswers] of LOOK_THEMES)
+  LOOK.push([label, QUESTIONS.map((_, i) => i).filter((i) => re.test(QUESTIONS[i].q) || (inAnswers && QUESTIONS[i].a.some((t) => re.test(t))))]);
+{
+  // Twins: near-identical wording (stem word-set Jaccard >= 0.6) OR near-identical answer options
+  // (Jaccard >= 0.5, >= 6 words so yes/no sets don't match), union-find into groups. Image questions skipped — their stems ("The sign means:") are identical by design, the picture differs.
+  // ponytail: O(n²) over ~700 stems at load (~50ms), precompute if the bank grows 10x
+  const STOP = new Set("the a an of to in on is are be you your if by for at with and or which what who when must it its this that from as".split(" "));
+  const txt = QUESTIONS.map((_, i) => i).filter((i) => !QUESTIONS[i].image);
+  const wordSet = (s) => new Set(s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 1 && !STOP.has(w)));
+  const jac = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / (a.size + b.size - n || 1); };
+  const words = txt.map((i) => wordSet(QUESTIONS[i].q)), answers = txt.map((i) => wordSet(QUESTIONS[i].a.join(" ")));
+  const par = txt.map((_, k) => k), root = (k) => (par[k] === k ? k : (par[k] = root(par[k])));
+  for (let x = 0; x < txt.length; x++) for (let y = x + 1; y < txt.length; y++) {
+    if (jac(words[x], words[y]) >= 0.6 || (answers[x].size >= 6 && answers[y].size >= 6 && jac(answers[x], answers[y]) >= 0.5))
+      par[root(x)] = root(y);
+  }
+  const groups = {};
+  txt.forEach((i, k) => (groups[root(k)] ??= []).push(i));
+  Object.values(groups).filter((g) => g.length > 1).sort((a, b) => b.length - a.length).forEach((g) => {
+    const shortest = g.map((i) => QUESTIONS[i].q).sort((a, b) => a.length - b.length)[0];
+    LOOK.push([`“${shortest.length > 70 ? shortest.slice(0, 70) + "…" : shortest}” + ${g.length - 1} similar`, g]);
+  });
+}
+LOOK.forEach(([label, set], k) => {
+  // sort by stem so twins with different answers sit next to each other in Read mode
+  DRILL_SETS["lk" + k] = set.sort((a, b) => QUESTIONS[a].q.localeCompare(QUESTIONS[b].q));
+  DRILL_LABELS["lk" + k] = label;
+});
+const drillRow = ([key, set]) =>
   `<tr><td style="padding:6px 0">${DRILL_LABELS[key]} (${set.length})</td>` +
   `<td style="padding:6px 0;text-align:right;white-space:nowrap">` +
   `<button class="ghost" onclick="startRead('${key}')">📖 Read answers</button> ` +
   `<button class="ghost" onclick="startDrill('${key}')">📝 Test yourself</button>` +
-  `</td></tr>`
-).join("");
+  `</td></tr>`;
+const renderDrillRows = () => {
+  const rows = Object.entries(DRILL_SETS);
+  $("drillSetRows").innerHTML = rows.filter(([k]) => !k.startsWith("lk")).map(drillRow).join("");
+  const head = (t) => `<tr><td colspan="2" style="padding:14px 0 4px;font-weight:600">${t}</td></tr>`;
+  $("lookRows").innerHTML = rows.filter(([k]) => k.startsWith("lk")).map((row, k) =>
+    (k === 0 ? head(`📚 By subject (${LOOK_THEMES.length})`) : k === LOOK_THEMES.length ? head(`👯 Twins — same wording or same answer options (${LOOK.length - LOOK_THEMES.length})`) : "") + drillRow(row)).join("");
+};
+renderDrillRows();
 
 // ---- LANGUAGE ----
 let lang = "en";
@@ -482,7 +637,7 @@ function classifyNumberQuestion(qq) {
 const NUMBER_ITEMS = QUESTIONS.map((qq, i) => ({ i, cls: classifyNumberQuestion(qq) }))
   .filter((x) => x.cls)
   .sort((a, b) => a.cls.sortVal - b.cls.sortVal);
-$("tabNumbers").textContent = `🔢 Numbers (${NUMBER_ITEMS.length})`;
+$("tabNumbers").textContent = `🔢 Numbers · ⏱ Speeds (${NUMBER_ITEMS.length})`;
 
 let numbersRendered = false;
 function highlightNumbers(text) { return text.replace(/(\d+(?:[.,]\d+)?)/g, '<b class="num">$1</b>'); }
@@ -536,10 +691,22 @@ function shuffledQuestion(idx) {
 
 function startQuiz() {
   quizCatSel = $("quizCat").value;
-  const pool = quizCatSel === "__weak"
-    ? QUESTIONS.map((_, i) => i).filter((i) => weakIds.has(IDS[i]))
-    : QUESTIONS.map((_, i) => i).filter((i) => !quizCatSel || TOPICS[i].cat === quizCatSel);
-  deck = shuffle(pool).slice(0, 26).map(shuffledQuestion);
+  let deckIdx;
+  if (quizCatSel === "__weak") {
+    deckIdx = shuffle(QUESTIONS.map((_, i) => i).filter((i) => weakIds.has(IDS[i]))).slice(0, 26);
+  } else {
+    // Prefer never-seen questions first, then previously-wrong ones, and only fall back to
+    // already-seen-and-correct ones once those two are exhausted — so repeat attempts surface new
+    // material instead of re-drawing questions you've already gotten right.
+    // Whole bank shown -> auto-start a new cycle, everything counts as unseen again.
+    if (IDS.every((id) => seenIds.has(id))) resetSeen();
+    const catPool = QUESTIONS.map((_, i) => i).filter((i) => !quizCatSel || TOPICS[i].cat === quizCatSel);
+    const unseen = catPool.filter((i) => !seenIds.has(IDS[i]));
+    const weak = catPool.filter((i) => seenIds.has(IDS[i]) && weakIds.has(IDS[i]));
+    const seenOk = catPool.filter((i) => seenIds.has(IDS[i]) && !weakIds.has(IDS[i]));
+    deckIdx = [...shuffle(unseen), ...shuffle(weak), ...shuffle(seenOk)].slice(0, 26);
+  }
+  deck = deckIdx.map(shuffledQuestion);
   qi = 0; score = 0; mistakes = 0; examAborted = false;
   $("mistakes").textContent = `Mistakes: 0/${MISTAKES_ALLOWED}`;
   $("mistakes").classList.remove("high");
@@ -631,11 +798,15 @@ function finishQuiz() {
     `<button class="primary wide" onclick="location.reload()">Menu</button>`;
 }
 
-// ---- FULL RUN: every question, main + unresolved, fresh shuffle every run ----
+// ---- FULL RUN: the not-yet-shown rest of the current cycle, verified bank only, fresh shuffle ----
+// ponytail: the src:"u" (unresolved) branches below are dead since unresolved left the pool; delete if it stays out
 let fullDeck, fi, fScore, fScored, fStart, fTimerHandle;
-const FULL_TOTAL = QUESTIONS.length + UNRESOLVED.length;
-$("tabFull").textContent = `🔁 Full run (${FULL_TOTAL})`;
-$("fullMenuCount").textContent = FULL_TOTAL;
+function unseenIdx() { return QUESTIONS.map((_, i) => i).filter((i) => !seenIds.has(IDS[i])); }
+function renderFullCount() {
+  const left = unseenIdx().length;
+  $("tabFull").textContent = `🔁 Full run (${left} left)`;
+  $("fullMenuCount").textContent = left;
+}
 
 function shuffledFullItem(src, idx) {
   if (src === "q") {
@@ -657,11 +828,8 @@ function shuffledFullItem(src, idx) {
 function textForFullItem(item) { return item.src === "q" ? textFor(item.idx) : textForUnresolved(UNRESOLVED[item.idx]); }
 
 function startFull() {
-  const pool = [
-    ...QUESTIONS.map((_, i) => ({ src: "q", idx: i })),
-    ...UNRESOLVED.map((_, i) => ({ src: "u", idx: i })),
-  ];
-  fullDeck = shuffle(pool).map((p) => shuffledFullItem(p.src, p.idx));
+  if (!unseenIdx().length) resetSeen(); // whole bank done -> new cycle
+  fullDeck = shuffle(unseenIdx()).map((i) => shuffledFullItem("q", i));
   fi = 0; fScore = 0; fScored = 0;
   $("fullMenu").hidden = true; $("fullResult").hidden = true; $("fullRun").hidden = false;
   clearInterval(fTimerHandle);
@@ -776,6 +944,7 @@ function finishFull() {
 let drillDeck, di, readKey, readPage;
 
 function startRead(key) {
+  if (!DRILL_SETS[key].length) return;
   readKey = key; readPage = 1;
   $("drillMenu").hidden = true; $("drillReadPane").hidden = false;
   renderRead();
@@ -789,9 +958,11 @@ function renderRead() {
 function backToDrillMenu() {
   $("drillReadPane").hidden = true; $("drillRun").hidden = true; $("drillResult").hidden = true;
   $("drillMenu").hidden = false;
+  renderDrillRows(); // weak-spots count changes after a drill
 }
 
 function startDrill(key) {
+  if (!DRILL_SETS[key].length) return;
   drillDeck = shuffle(DRILL_SETS[key]).map(shuffledQuestion);
   di = 0;
   $("drillMenu").hidden = true; $("drillResult").hidden = true; $("drillRun").hidden = false;
