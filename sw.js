@@ -1,5 +1,5 @@
 // ponytail: hardcoded precache list, bump CACHE_NAME when the file list or data changes
-const CACHE_NAME = 'drpciv-v3';
+const CACHE_NAME = 'drpciv-v4';
 const ASSETS = [
   'study.html',
   'manifest.json',
