@@ -55,39 +55,6 @@ const UNRESOLVED = [
   "elim": false
  },
  {
-  "id": "0c1bb2500a",
-  "q": "What technical conditions must a vehicle meet to be driven on public roads?",
-  "a": [
-   "not exceed the maximum authorized total mass stated in the registration certificate",
-   "not exceed the dimensions stated in the registration certificate",
-   "be registered and comply with the legal technical requirements"
-  ],
-  "ro": {
-   "q": "Ce condiţii tehnice trebuie să îndeplinească un autovehicul pentru a circula pe drumurile publice?",
-   "a": [
-    "să nu depăşească masa totală maximă autorizată înscrisă în certificatul de înmatriculare",
-    "să nu depăşească gabaritul înscris în certificatul de înmatriculare",
-    "să fie înmatriculat şi să corespundă condiţiilor tehnice legale"
-   ]
-  },
-  "image": null,
-  "status": "candidate",
-  "letters": [
-   "A",
-   "B",
-   "C"
-  ],
-  "ruledOut": [
-   "B",
-   "AB",
-   "BC",
-   "C",
-   "ABC",
-   "A"
-  ],
-  "elim": true
- },
- {
   "id": "22ace734b4",
   "q": "At what distance from a level railway crossing are the additional warning panels installed?",
   "a": [
@@ -111,7 +78,10 @@ const UNRESOLVED = [
   "ruledOut": [
    "C",
    "A",
-   "B"
+   "B",
+   "AB",
+   "AC",
+   "BC"
   ],
   "elim": false
  },
@@ -164,7 +134,8 @@ const UNRESOLVED = [
    "A"
   ],
   "ruledOut": [
-   "A"
+   "A",
+   "B"
   ],
   "elim": false
  },
