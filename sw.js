@@ -1,5 +1,5 @@
 // ponytail: hardcoded precache list, bump CACHE_NAME when the file list or data changes
-const CACHE_NAME = 'drpciv-v9';
+const CACHE_NAME = 'drpciv-v10';
 const ASSETS = [
   'study.html',
   'manifest.json',
@@ -10,6 +10,7 @@ const ASSETS = [
   'translations_ru.js',
   'topics.js',
   'unresolved.js',
+  'cat_a.js',
   ...Array.from({ length: 15 }, (_, i) => `qchunks/questions.part${String(i).padStart(2, '0')}.js`),
 ];
 

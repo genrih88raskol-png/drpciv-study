@@ -59,10 +59,12 @@
   .tag.candidate { background: #e0f2fe; color: #075985; }
   .tag.rejected { background: #fee2e2; color: #991b1b; }
   .tag.unknown { background: #ede9fe; color: #5b21b6; }
+  .tag.confirmed { background: #dcfce7; color: #166534; }
   .banner { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
   .banner.candidate { background: #e0f2fe; color: #075985; }
   .banner.rejected { background: #fee2e2; color: #991b1b; }
   .banner.unknown { background: #ede9fe; color: #5b21b6; }
+  .banner.confirmed { background: #dcfce7; color: #166534; }
   .ruledout { font-size: 12px; color: var(--danger); margin-top: 6px; }
   img.qimg { max-width: 100%; border-radius: 10px; margin: 8px 0; display: block; }
   .opt {
@@ -125,6 +127,7 @@
   <option value="study">📖 Study (read & filter)</option>
   <option value="quiz">📝 Quiz (shuffled options)</option>
   <option id="tabUnresolved" value="unresolved">⚠️ Unresolved</option>
+  <option id="tabCatA" value="catA">🏍 From category A</option>
   <option id="tabFull" value="full">🔁 Full run</option>
   <option value="drill">🎯 Learn by pattern · 🔀 Look-alikes</option>
   <option id="tabNumbers" value="numbers">🔢 Numbers</option>
@@ -177,6 +180,14 @@
   not yet tested or still being tested. <b>rejected</b> = this exact answer was tried on the real site and
   scored wrong — shown only so you know what NOT to pick. <b>unknown</b> = no candidate answer at all yet.</p>
   <div id="unresolvedList"></div>
+</div>
+
+<!-- FROM CATEGORY A: general questions seen on the site's category-A (motorcycle) exam, wording verbatim -->
+<div id="catAPane" hidden>
+  <p class="muted">Questions the real DGPCI site showed in the <b>category A</b> (motorcycle) exam. The rules are the
+  same as for cars and they may appear on your exam too, so learn them as written. <b>confirmed</b> = the real site
+  accepted this answer. <b>candidate</b> = answer taken from the traffic law, not yet confirmed by the site.</p>
+  <div id="catAList"></div>
 </div>
 
 <!-- FULL RUN: the rest of the current cycle — every verified question not yet shown, shuffled -->
@@ -307,6 +318,7 @@
 <script src="translations_ru.js"></script>
 <script src="topics.js"></script>
 <script src="unresolved.js"></script>
+<script src="cat_a.js"></script>
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 const $ = (id) => document.getElementById(id);
@@ -385,9 +397,13 @@ function renderCoverage() {
 renderCoverage();
 
 $("tabUnresolved").textContent = `⚠️ Unresolved (${UNRESOLVED.length})`;
+$("tabCatA").textContent = `🏍 From category A (${CAT_A.length})`;
 
 // ---- LEARN BY PATTERN: drill sets grouped by answer shape ----
+// 30 questions the real site showed most often (13–17× in 251 exams vs 6× average), most frequent first. ponytail: hand-pasted from 2026-11-25 stats, refresh by rerunning the count.
+const FREQUENT_IDS = ["e99561ed07","a11f50c187","8b5bf5156f","2fff8adc86","29f4a27579","6b7671b3c4","fd335a5fdf","4dc300b3db","9279b02cac","2666635398","7d41f4e9f2","f7a1091390","34bc77788d","684de3f2c9","5fd6053068","78e8e6b4a2","bad7b8cbe9","b42162c7bd","ac6896541c","1e3e393691","e7e664bba9","3d465793c8","833f8fdb12","82a71aa473","256dc48516","e6a6f90f71","f53ac962ed","3c50cd08c8","cc98e30f94","921eaa810e"];
 const DRILL_SETS = {
+  frequent: FREQUENT_IDS.map((id) => IDS.indexOf(id)).filter((i) => i >= 0),
   get weak() { return QUESTIONS.map((_, i) => i).filter((i) => weakIds.has(IDS[i])); }, // live: weak list changes as you answer
   c1: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 1),
   c2: QUESTIONS.map((_, i) => i).filter((i) => QUESTIONS[i].correct.length === 2),
@@ -395,6 +411,7 @@ const DRILL_SETS = {
   priorityImg: QUESTIONS.map((_, i) => i).filter((i) => TOPICS[i].cat === "priority" && QUESTIONS[i].image),
 };
 const DRILL_LABELS = {
+  frequent: "🔥 Most frequent on the real site (13–17× per 251 exams)",
   weak: "⚠️ Weak spots — questions you got wrong",
   c1: "1 correct answer",
   c2: "2 correct answers",
@@ -495,9 +512,10 @@ let lang = "en";
 function setLang(l) {
   lang = l;
   document.querySelectorAll("#langBar button").forEach((b) => b.classList.toggle("active", b.dataset.lang === l));
-  studyRendered = false; unresolvedRendered = false; numbersRendered = false;
+  studyRendered = false; unresolvedRendered = false; numbersRendered = false; catARendered = false;
   if (!$("studyPane").hidden) renderStudy();
   if (!$("unresolvedPane").hidden) renderUnresolved();
+  if (!$("catAPane").hidden) renderCatA();
   if (!$("quizPane").hidden && !$("quizRun").hidden) { if (deck && deck[qi]) deck[qi]._picked = picked(); showQuiz(); } // re-render current quiz question in new language, same shuffle, keep picks
   if (!$("fullPane").hidden && !$("fullRun").hidden) { if (fullDeck && fullDeck[fi]) fullDeck[fi]._picked = pickedFull(); showFull(); }
   if (!$("drillPane").hidden && !$("drillRun").hidden) showDrill();
@@ -514,7 +532,7 @@ function textFor(idx) {
 }
 function textForUnresolved(u) {
   if (lang === "ro") return u.ro ? { q: u.ro.q, a: u.ro.a } : { q: u.q, a: u.a };
-  if (lang === "ru") { const t = TR_RU[u.id]; if (t) return t; }
+  if (lang === "ru") { const t = TR_RU[u.id] || u.ru; if (t) return t; }
   return { q: u.q, a: u.a };
 }
 
@@ -524,16 +542,20 @@ function switchTab(t) {
   $("quizPane").hidden = t !== "quiz";
   $("unresolvedPane").hidden = t !== "unresolved";
   $("fullPane").hidden = t !== "full";
+  $("catAPane").hidden = t !== "catA";
   $("drillPane").hidden = t !== "drill";
   $("numbersPane").hidden = t !== "numbers";
   if (t === "study" && !studyRendered) renderStudy();
   if (t === "unresolved" && !unresolvedRendered) renderUnresolved();
   if (t === "numbers" && !numbersRendered) renderNumbers();
+  if (t === "catA" && !catARendered) renderCatA();
 }
 
 // ---- UNRESOLVED PANE ----
 let unresolvedRendered = false;
-const STATUS_LABEL = { candidate: "candidate", rejected: "rejected — do NOT pick this", unknown: "unknown — no candidate yet" };
+let catARendered = false;
+function renderCatA() { catARendered = true; $("catAList").innerHTML = CAT_A.map(unresolvedCardHtml).join(""); }
+const STATUS_LABEL = { confirmed: "confirmed on the real site", candidate: "candidate", rejected: "rejected — do NOT pick this", unknown: "unknown — no candidate yet" };
 function renderUnresolved() {
   unresolvedRendered = true;
   $("unresolvedList").innerHTML = UNRESOLVED.map(unresolvedCardHtml).join("");
@@ -547,6 +569,8 @@ function unresolvedCardHtml(u) {
     ? `Best guess so far: ${u.letters.join(", ")}${u.elim ? " (forced by elimination — every other option already ruled out on the real site)" : " — unconfirmed"}`
     : u.status === "rejected"
     ? `Tried on the real site and marked WRONG: ${combo(u.letters.join(""))}`
+    : u.status === "confirmed"
+    ? `Confirmed on the real site: ${combo(u.letters.join(""))}`
     : `No candidate answer yet`;
   return `<div class="card">` +
     `<span class="tag ${u.status}">${STATUS_LABEL[u.status]}</span>` +
