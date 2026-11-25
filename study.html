@@ -541,10 +541,12 @@ function renderUnresolved() {
 function unresolvedCardHtml(u) {
   const letterSet = new Set(u.letters);
   const txt = textForUnresolved(u);
+  // show the answer TEXT, not letters — letters are shuffled on the real site
+  const combo = c => [...c].map(L => `«${txt.a["ABCDE".indexOf(L)]}»`).join(" + ");
   const bannerText = u.status === "candidate"
     ? `Best guess so far: ${u.letters.join(", ")}${u.elim ? " (forced by elimination — every other option already ruled out on the real site)" : " — unconfirmed"}`
     : u.status === "rejected"
-    ? `Tried on the real site and marked WRONG: ${u.letters.join(", ")}`
+    ? `Tried on the real site and marked WRONG: ${combo(u.letters.join(""))}`
     : `No candidate answer yet`;
   return `<div class="card">` +
     `<span class="tag ${u.status}">${STATUS_LABEL[u.status]}</span>` +
@@ -553,7 +555,7 @@ function unresolvedCardHtml(u) {
     txt.a.map((a, k) => `<div class="opt${u.status !== "rejected" && letterSet.has("ABCDE"[k]) ? " correct" : ""}">${"ABCDE"[k]}. ${a}</div>`).join("") +
     (lang !== "ro" && u.ro ? `<div class="ro">${u.ro.q}</div>` : "") +
     `<div class="banner ${u.status}">${bannerText}</div>` +
-    (u.ruledOut.length ? `<div class="ruledout">Previously tried &amp; rejected on site: ${u.ruledOut.join(", ")}</div>` : "") +
+    (u.ruledOut.length ? `<div class="ruledout">Previously tried &amp; rejected on site:<br>${u.ruledOut.map(combo).join("<br>")}</div>` : "") +
     `</div>`;
 }
 
